@@ -1,0 +1,78 @@
+Microsoft (R) Macro Assembler Version 14.13.26128.0	    06/11/18 16:45:56
+__sumArray.asm						     Page 1 - 1
+
+
+				; __sumArray function      (__sumArray.asm)
+
+				.586
+				.model flat,C
+				__sumArray PROTO,
+					arrayAddress:PTR DWORD, arraySize:DWORD
+
+ 00000000			.code
+				;-----------------------------------------------
+ 00000000			__sumArray PROC uses ecx esi edi,
+					arrayAddress:PTR DWORD, arraySize:DWORD
+ 00000000  55		   *	    push   ebp
+ 00000001  8B EC	   *	    mov    ebp, esp
+ 00000003  51		   *	    push   ecx
+ 00000004  56		   *	    push   esi
+ 00000005  57		   *	    push   edi
+ 00000006  8B 4D 0C			mov ecx, arraySize
+ 00000009  8B 75 08			mov esi, arrayAddress
+ 0000000C  B8 00000000			mov eax, 0;
+
+ 00000011				AddVal:
+ 00000011  03 06				add eax, DWORD PTR [esi]
+ 00000013  83 C6 04				add esi, type DWORD
+ 00000016  E2 F9				loop AddVal
+
+						ret
+ 00000018  5F		   *	    pop    edi
+ 00000019  5E		   *	    pop    esi
+ 0000001A  59		   *	    pop    ecx
+ 0000001B  C9		   *	    leave  
+ 0000001C  C3		   *	    ret    00000h
+ 0000001D			__sumArray ENDP
+				END
+Microsoft (R) Macro Assembler Version 14.13.26128.0	    06/11/18 16:45:56
+__sumArray.asm						     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000000 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 0000001D Para	  Public  'CODE'	
+
+
+Procedures, parameters, and locals:
+
+                N a m e                 Type     Value    Attr
+
+__sumArray . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000001D Public C
+  arrayAddress . . . . . . . . .	DWord	 bp + 00000008
+  arraySize  . . . . . . . . . .	DWord	 bp + 0000000C
+  AddVal . . . . . . . . . . . .	L Near	 00000011 _TEXT	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000001h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+
+	   0 Warnings
+	   0 Errors

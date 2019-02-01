@@ -1,0 +1,3 @@
+﻿  Assembling __sumArray.asm...
+main.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/OPT:REF' specification
+  IndexOf_asm.vcxproj -> C:\Users\Atlas\Dropbox\ASM\sumArray\Debug\Lab12.exe

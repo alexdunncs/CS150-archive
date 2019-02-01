@@ -1,0 +1,1051 @@
+Microsoft (R) Macro Assembler Version 14.13.26128.0	    06/01/18 11:42:20
+Project_4.asm						     Page 1 - 1
+
+
+				; CSCI 150
+
+				include Irvine32.inc
+			      C ; Include file for Irvine32.lib             (Irvine32.inc)
+			      C 
+			      C ;OPTION CASEMAP:NONE		; optional: make identifiers case-sensitive
+			      C 
+			      C INCLUDE SmallWin.inc		; MS-Windows prototypes, structures, and constants
+			      C .NOLIST
+			      C .LIST
+			      C 
+			      C INCLUDE VirtualKeys.inc
+			      C ; VirtualKeys.inc
+			      C .NOLIST
+			      C .LIST
+			      C 
+			      C 
+			      C .NOLIST
+			      C .LIST
+			      C 
+				include Macros.inc
+			      C .NOLIST
+			      C .LIST
+			      C 
+
+				.386
+				.model flat,stdcall
+Project_4.asm(7) : warning A4011:multiple .MODEL directives found : .MODEL ignored
+				.stack 4096
+				ExitProcess proto,dwExitCode:dword
+
+
+ 00000004			TimeObj STRUCT
+ 00000000  00				hours BYTE 0
+ 00000001  00				minutes BYTE 0
+ 00000002  00				seconds BYTE 0
+ 00000003  41				ampm BYTE 'A'
+				TimeObj ENDS
+
+
+				SetTime PROTO clockAddress:DWORD, seconds:BYTE, minutes:BYTE, hours:BYTE, ampm:BYTE
+				UpdateTimeObjFromSysClock PROTO clockAddress:DWORD
+				AddSecs PROTO clockAddress:DWORD, seconds:DWORD
+				AddMins PROTO clockAddress:DWORD, minutes:DWORD
+				AddHours PROTO clockAddress:DWORD, hours:DWORD
+				PrintTime PROTO clockAddress:DWORD
+
+
+				ToggleAMPM MACRO	;Toggles al between 'A' and 'P'.  Assumes al contains 'A' or 'P'
+					cmp al, 'A'
+					je MakeP
+					mov al, 'A'
+					jmp ToggleAMPMEnd
+					MakeP:
+					mov al, 'P'
+					ToggleAMPMEnd:
+				ENDM
+
+
+				DecToBCD MACRO		;converts ax dec to two-digit al BCD  
+					mov bl, 10	;set reg8 divisor
+					div bl		;ah now stores ones, al now stores tens
+					xchg al, ah	;ah now stores tens, al now stores ones (only lower nibbles occupied, assuming valid parameters)
+					shl ah, 4		;lower nibble of ah now occupies upper nibble of ah
+					or al, ah		;write the upper nibble of ah to the upper nibble of al
+				ENDM
+
+
+				BCDToDec MACRO			;converts two-digit al BCD to eax dec
+					mov bh, al;		;copy BCD byte to bh, from which to isolate ones
+					and bh, 00001111b	;isolate ones in bh
+					and al, 11110000b	;isolate tens in al upper nibble
+					shr al, 4			;move tens to al lower nibble
+					mov bl, 10		;set reg8 multiplier
+					mul bl			;ax = tens*10
+					add al, bh		;add the ones back to al
+					and eax, 11111111b	;clear upper 16bits of eax
+				ENDM
+
+
+				BCDPairToCharPair MACRO	;converts two-digit al BCD to ah:al char pair
+					mov ah, al;		;copy BCD byte to ah, from which to isolate tens
+
+					and ah, 11110000b	;isolate tens in upper nibble of ah
+					shr ah, 4			;move to (lower nibble of) ah
+					add ah, 48		;convert ah to char
+
+					and al, 00001111b	;isolate ones in al lower nibble
+					add al, '0'		;convert al to char
+				ENDM
+
+
+				PrintCharPair MACRO
+					xchg al, ah	;swap tens char to al
+					call WriteChar	;print it
+					xchg al, ah	;swap ones char to al
+					call WriteChar	;print it
+				ENDM
+
+
+ 00000000			.data
+ 00000000 41 75 74 68 6F	author byte "Authors: Alexander Dunn, Robert Zou",0Dh,0Ah,0
+	   72 73 3A 20 41
+	   6C 65 78 61 6E
+	   64 65 72 20 44
+	   75 6E 6E 2C 20
+	   52 6F 62 65 72
+	   74 20 5A 6F 75
+	   0D 0A 00
+
+ 00000026 00 00 00 41		clock TimeObj <>
+
+ 00000000			.code
+ 00000000			main proc
+
+ 00000000				L1:
+ 00000000  E8 00000000 E		call Clrscr
+					invoke UpdateTimeObjFromSysClock, offset clock
+ 00000005  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 0000000A  E8 000000E3	   *	    call   UpdateTimeObjFromSysClock
+					invoke PrintTime, offset clock
+ 0000000F  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 00000014  E8 00000251	   *	    call   PrintTime
+					
+					invoke addSecs, offset clock, 45
+ 00000019  6A 2D	   *	    push   +00000002Dh
+ 0000001B  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 00000020  E8 0000012C	   *	    call   AddSecs
+					invoke PrintTime, offset clock
+ 00000025  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 0000002A  E8 0000023B	   *	    call   PrintTime
+					invoke addSecs, offset clock, 45
+ 0000002F  6A 2D	   *	    push   +00000002Dh
+ 00000031  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 00000036  E8 00000116	   *	    call   AddSecs
+					invoke PrintTime, offset clock
+ 0000003B  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 00000040  E8 00000225	   *	    call   PrintTime
+
+
+					invoke addMins, offset clock, 45
+ 00000045  6A 2D	   *	    push   +00000002Dh
+ 00000047  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 0000004C  E8 00000158	   *	    call   AddMins
+					invoke PrintTime, offset clock
+ 00000051  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 00000056  E8 0000020F	   *	    call   PrintTime
+				     invoke addMins, offset clock, 45
+ 0000005B  6A 2D	   *	    push   +00000002Dh
+ 0000005D  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 00000062  E8 00000142	   *	    call   AddMins
+					invoke PrintTime, offset clock
+ 00000067  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 0000006C  E8 000001F9	   *	    call   PrintTime
+
+					invoke addHours, offset clock, 8
+ 00000071  6A 08	   *	    push   +000000008h
+ 00000073  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 00000078  E8 00000184	   *	    call   AddHours
+					invoke PrintTime, offset clock
+ 0000007D  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 00000082  E8 000001E3	   *	    call   PrintTime
+					invoke addHours, offset clock, 8
+ 00000087  6A 08	   *	    push   +000000008h
+ 00000089  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 0000008E  E8 0000016E	   *	    call   AddHours
+					invoke PrintTime, offset clock
+ 00000093  68 00000026 R   *	    push   dword  ptr OFFSET FLAT: clock
+ 00000098  E8 000001CD	   *	    call   PrintTime
+
+
+
+					;mov ecx, 0FFFFFFh
+					;HolUpDude:
+					;mov eax, ecx
+					;mov ecx, eax
+					;loop HolUpDude
+
+
+					;jmp L1
+
+					invoke ExitProcess,0
+ 0000009D  6A 00	   *	    push   +000000000h
+ 0000009F  E8 00000000 E   *	    call   ExitProcess
+ 000000A4			main endp
+
+ 000000A4			SetTime PROC USES eax ebx esi clockAddress:DWORD, seconds:BYTE, minutes:BYTE, hours:BYTE, ampm:BYTE
+
+ 000000A4  55		   *	    push   ebp
+ 000000A5  8B EC	   *	    mov    ebp, esp
+ 000000A7  50		   *	    push   eax
+ 000000A8  53		   *	    push   ebx
+ 000000A9  56		   *	    push   esi
+ 000000AA  8B 75 08			mov esi, clockAddress
+					
+ 000000AD  8A 45 18			mov al, ampm
+ 000000B0  88 46 03			mov (TimeObj ptr [esi]).ampm, al
+					
+ 000000B3  66| 0F B6 45			movzx ax, hours
+	   14
+					DecToBCD
+ 000000B8  B3 0A	     1		mov bl, 10	;set reg8 divisor
+ 000000BA  F6 F3	     1		div bl		;ah now stores ones, al now stores tens
+ 000000BC  86 C4	     1		xchg al, ah	;ah now stores tens, al now stores ones (only lower nibbles occupied, assuming valid parameters)
+ 000000BE  C0 E4 04	     1		shl ah, 4		;lower nibble of ah now occupies upper nibble of ah
+ 000000C1  0A C4	     1		or al, ah		;write the upper nibble of ah to the upper nibble of al
+ 000000C3  88 06			mov (TimeObj ptr [esi]).hours, al
+
+ 000000C5  66| 0F B6 45			movzx ax, minutes
+	   10
+					DecToBCD
+ 000000CA  B3 0A	     1		mov bl, 10	;set reg8 divisor
+ 000000CC  F6 F3	     1		div bl		;ah now stores ones, al now stores tens
+ 000000CE  86 C4	     1		xchg al, ah	;ah now stores tens, al now stores ones (only lower nibbles occupied, assuming valid parameters)
+ 000000D0  C0 E4 04	     1		shl ah, 4		;lower nibble of ah now occupies upper nibble of ah
+ 000000D3  0A C4	     1		or al, ah		;write the upper nibble of ah to the upper nibble of al
+ 000000D5  88 46 01			mov (TimeObj ptr [esi]).minutes, al
+
+ 000000D8  66| 0F B6 45			movzx ax, seconds
+	   0C
+					DecToBCD
+ 000000DD  B3 0A	     1		mov bl, 10	;set reg8 divisor
+ 000000DF  F6 F3	     1		div bl		;ah now stores ones, al now stores tens
+ 000000E1  86 C4	     1		xchg al, ah	;ah now stores tens, al now stores ones (only lower nibbles occupied, assuming valid parameters)
+ 000000E3  C0 E4 04	     1		shl ah, 4		;lower nibble of ah now occupies upper nibble of ah
+ 000000E6  0A C4	     1		or al, ah		;write the upper nibble of ah to the upper nibble of al
+ 000000E8  88 46 02			mov (TimeObj ptr [esi]).seconds, al
+
+					ret
+ 000000EB  5E		   *	    pop    esi
+ 000000EC  5B		   *	    pop    ebx
+ 000000ED  58		   *	    pop    eax
+ 000000EE  C9		   *	    leave  
+ 000000EF  C2 0014	   *	    ret    00014h
+ 000000F2			SetTime ENDP
+
+
+ 000000F2			UpdateTimeObjFromSysClock PROC USES EAX EBX EDX clockAddress:DWORD ;Gets time from sysclock and updates clockAddress
+					
+ 000000F2  55		   *	    push   ebp
+ 000000F3  8B EC	   *	    mov    ebp, esp
+ 000000F5  50		   *	    push   eax
+ 000000F6  53		   *	    push   ebx
+ 000000F7  52		   *	    push   edx
+ 000000F8  8B 75 08			mov esi, clockAddress
+
+ 000000FB  E8 00000000 E		call GetMseconds
+ 00000100  BA 00000000			mov edx, 0	;clear edx
+ 00000105  BB 000003E8			mov ebx, 1000	;set divisor to 1000
+ 0000010A  F7 F3			div ebx		;get seconds
+
+ 0000010C  BA 00000000			mov edx, 0	;clear edx
+ 00000111  BB 0000A8C0			mov ebx, 43200 ;set divisor to 12*60*60
+ 00000116  F7 F3			div ebx		;eax = isPM, edx = seconds since midnight/noon
+
+ 00000118  83 F8 00			cmp eax, 0	;was eax > 43200 = 12:00:00?
+ 0000011B  7F 04			jg IsPM		;if so, it's PM
+ 0000011D  B0 41			mov al, 'A'	;else set char to 'A'
+ 0000011F  EB 02			jmp ProcessHour;continue
+ 00000121				IsPM:		;if it's PM
+ 00000121  B0 50			mov al, 'P'	;set char to 'P'
+ 00000123				ProcessHour:	;continue
+					;and ax, 0FFFFh;clear first byte of ax
+ 00000123  66| 50			push ax		;push character to the stack
+
+ 00000125  8B C2			mov eax, edx	;set eax equal to the time, in seconds
+ 00000127  BA 00000000			mov edx, 0	;clear edx
+ 0000012C  BB 00000E10			mov ebx, 3600	;set divisor to 60*60
+ 00000131  F7 F3			div ebx		;eax = hours, edx = minutes and seconds, in seconds
+ 00000133  50				push eax		;push hours to the stack
+
+ 00000134  8B C2			mov eax, edx	;set eax equal to  minutes and seconds, in seconds
+ 00000136  BA 00000000			mov edx, 0	;clear edx
+ 0000013B  BB 0000003C			mov ebx, 60	;set divisor to 60
+ 00000140  F7 F3			div ebx		;eax = minutes, edx = seconds
+ 00000142  50				push eax		;push minutes to the stack
+
+ 00000143  52				push edx		;push seconds to the stack
+
+ 00000144  56				push esi		;push TimeObj address
+
+ 00000145  E8 FFFFFF5A			call SetTime
+
+ 0000014A  5A		   *	    pop    edx
+ 0000014B  5B		   *	    pop    ebx
+ 0000014C  58		   *	    pop    eax
+ 0000014D  C9		   *	    leave  
+ 0000014E  C2 0004			ret 4
+ 00000151			UpdateTimeObjFromSysClock ENDP
+
+
+ 00000151			AddSecs PROC USES EAX EBX EDX ESI clockAddress:DWORD, seconds:DWORD
+ 00000151  55		   *	    push   ebp
+ 00000152  8B EC	   *	    mov    ebp, esp
+ 00000154  50		   *	    push   eax
+ 00000155  53		   *	    push   ebx
+ 00000156  52		   *	    push   edx
+ 00000157  56		   *	    push   esi
+ 00000158  8B 75 08		    mov esi, clockAddress
+
+ 0000015B  0F B6 46 02		    movzx eax, (TimeObj PTR [esi]).seconds
+				    BCDToDec
+ 0000015F  8A F8	     1		mov bh, al;		;copy BCD byte to bh, from which to isolate ones
+ 00000161  80 E7 0F	     1		and bh, 00001111b	;isolate ones in bh
+ 00000164  24 F0	     1		and al, 11110000b	;isolate tens in al upper nibble
+ 00000166  C0 E8 04	     1		shr al, 4			;move tens to al lower nibble
+ 00000169  B3 0A	     1		mov bl, 10		;set reg8 multiplier
+ 0000016B  F6 E3	     1		mul bl			;ax = tens*10
+ 0000016D  02 C7	     1		add al, bh		;add the ones back to al
+ 0000016F  25 000000FF	     1		and eax, 11111111b	;clear upper 16bits of eax
+ 00000174  03 45 0C		    add eax, seconds
+
+ 00000177  BA 00000000		    mov edx, 0
+ 0000017C  BB 0000003C		    mov ebx, 60
+ 00000181  F7 F3		    div ebx
+ 00000183  92			    xchg eax, edx
+				    DecToBCD
+ 00000184  B3 0A	     1		mov bl, 10	;set reg8 divisor
+ 00000186  F6 F3	     1		div bl		;ah now stores ones, al now stores tens
+ 00000188  86 C4	     1		xchg al, ah	;ah now stores tens, al now stores ones (only lower nibbles occupied, assuming valid parameters)
+ 0000018A  C0 E4 04	     1		shl ah, 4		;lower nibble of ah now occupies upper nibble of ah
+ 0000018D  0A C4	     1		or al, ah		;write the upper nibble of ah to the upper nibble of al
+ 0000018F  92			    xchg eax, edx
+ 00000190  88 56 02		    mov (TimeObj PTR [esi]).seconds, dl
+				    
+ 00000193  83 F8 00		    cmp eax, 0
+ 00000196  74 09		    je Complete
+				    
+				    invoke AddMins, clockAddress, eax
+ 00000198  50		   *	    push   eax
+ 00000199  FF 75 08	   *	    push   dword  ptr ss:[ebp]+000000008h
+ 0000019C  E8 00000008	   *	    call   AddMins
+				    
+ 000001A1			    Complete:
+ 000001A1  5E		   *	    pop    esi
+ 000001A2  5A		   *	    pop    edx
+ 000001A3  5B		   *	    pop    ebx
+ 000001A4  58		   *	    pop    eax
+ 000001A5  C9		   *	    leave  
+ 000001A6  C2 0008		    ret 8
+ 000001A9			AddSecs ENDP
+
+
+ 000001A9			AddMins PROC USES EAX EBX EDX ESI clockAddress:DWORD, minutes:DWORD
+ 000001A9  55		   *	    push   ebp
+ 000001AA  8B EC	   *	    mov    ebp, esp
+ 000001AC  50		   *	    push   eax
+ 000001AD  53		   *	    push   ebx
+ 000001AE  52		   *	    push   edx
+ 000001AF  56		   *	    push   esi
+ 000001B0  8B 75 08		    mov esi, clockAddress
+
+ 000001B3  0F B6 46 01		    movzx eax, (TimeObj PTR [esi]).minutes
+				    BCDToDec
+ 000001B7  8A F8	     1		mov bh, al;		;copy BCD byte to bh, from which to isolate ones
+ 000001B9  80 E7 0F	     1		and bh, 00001111b	;isolate ones in bh
+ 000001BC  24 F0	     1		and al, 11110000b	;isolate tens in al upper nibble
+ 000001BE  C0 E8 04	     1		shr al, 4			;move tens to al lower nibble
+ 000001C1  B3 0A	     1		mov bl, 10		;set reg8 multiplier
+ 000001C3  F6 E3	     1		mul bl			;ax = tens*10
+ 000001C5  02 C7	     1		add al, bh		;add the ones back to al
+ 000001C7  25 000000FF	     1		and eax, 11111111b	;clear upper 16bits of eax
+ 000001CC  03 45 0C		    add eax, minutes
+				    
+ 000001CF  BA 00000000		    mov edx, 0
+ 000001D4  BB 0000003C		    mov ebx, 60
+ 000001D9  F7 F3		    div ebx
+ 000001DB  92			    xchg eax, edx
+				    DecToBCD
+ 000001DC  B3 0A	     1		mov bl, 10	;set reg8 divisor
+ 000001DE  F6 F3	     1		div bl		;ah now stores ones, al now stores tens
+ 000001E0  86 C4	     1		xchg al, ah	;ah now stores tens, al now stores ones (only lower nibbles occupied, assuming valid parameters)
+ 000001E2  C0 E4 04	     1		shl ah, 4		;lower nibble of ah now occupies upper nibble of ah
+ 000001E5  0A C4	     1		or al, ah		;write the upper nibble of ah to the upper nibble of al
+ 000001E7  92			    xchg eax, edx
+ 000001E8  88 56 01		    mov (TimeObj PTR [esi]).minutes, dl
+				   
+ 000001EB  83 F8 00		    cmp eax, 0
+ 000001EE  74 09		    je Complete
+				    
+				    invoke AddHours, clockAddress, eax
+ 000001F0  50		   *	    push   eax
+ 000001F1  FF 75 08	   *	    push   dword  ptr ss:[ebp]+000000008h
+ 000001F4  E8 00000008	   *	    call   AddHours
+
+ 000001F9			    Complete:
+ 000001F9  5E		   *	    pop    esi
+ 000001FA  5A		   *	    pop    edx
+ 000001FB  5B		   *	    pop    ebx
+ 000001FC  58		   *	    pop    eax
+ 000001FD  C9		   *	    leave  
+ 000001FE  C2 0008		    ret 8
+ 00000201			AddMins ENDP
+
+
+ 00000201			AddHours PROC USES EAX EBX EDX ESI clockAddress:DWORD, hours:DWORD
+ 00000201  55		   *	    push   ebp
+ 00000202  8B EC	   *	    mov    ebp, esp
+ 00000204  50		   *	    push   eax
+ 00000205  53		   *	    push   ebx
+ 00000206  52		   *	    push   edx
+ 00000207  56		   *	    push   esi
+ 00000208  8B 75 08		    mov esi, clockAddress
+				    
+ 0000020B  0F B6 06		    movzx eax, (TimeObj PTR [esi]).hours
+				    BCDToDec
+ 0000020E  8A F8	     1		mov bh, al;		;copy BCD byte to bh, from which to isolate ones
+ 00000210  80 E7 0F	     1		and bh, 00001111b	;isolate ones in bh
+ 00000213  24 F0	     1		and al, 11110000b	;isolate tens in al upper nibble
+ 00000215  C0 E8 04	     1		shr al, 4			;move tens to al lower nibble
+ 00000218  B3 0A	     1		mov bl, 10		;set reg8 multiplier
+ 0000021A  F6 E3	     1		mul bl			;ax = tens*10
+ 0000021C  02 C7	     1		add al, bh		;add the ones back to al
+ 0000021E  25 000000FF	     1		and eax, 11111111b	;clear upper 16bits of eax
+ 00000223  03 45 0C		    add eax, hours
+				    
+ 00000226  BA 00000000		    mov edx, 0
+ 0000022B  BB 0000000C		    mov ebx, 12
+ 00000230  F7 F3		    div ebx
+ 00000232  92			    xchg eax, edx
+				    DecToBCD
+ 00000233  B3 0A	     1		mov bl, 10	;set reg8 divisor
+ 00000235  F6 F3	     1		div bl		;ah now stores ones, al now stores tens
+ 00000237  86 C4	     1		xchg al, ah	;ah now stores tens, al now stores ones (only lower nibbles occupied, assuming valid parameters)
+ 00000239  C0 E4 04	     1		shl ah, 4		;lower nibble of ah now occupies upper nibble of ah
+ 0000023C  0A C4	     1		or al, ah		;write the upper nibble of ah to the upper nibble of al
+ 0000023E  92			    xchg eax, edx
+ 0000023F  88 16		    mov (TimeObj PTR [esi]).hours, dl
+				    
+ 00000241  BA 00000000		    mov edx, 0
+ 00000246  BB 00000002		    mov ebx, 2
+ 0000024B  F7 F3		    div ebx
+ 0000024D  83 FA 00		    cmp edx, 0
+ 00000250  74 10		    je Complete
+				    
+ 00000252  8A 46 03		    mov al, (TimeObj PTR [esi]).ampm
+					   ToggleAMPM
+ 00000255  3C 41	     1		cmp al, 'A'
+ 00000257  74 04	     1		je MakeP
+ 00000259  B0 41	     1		mov al, 'A'
+ 0000025B  EB 02	     1		jmp ToggleAMPMEnd
+ 0000025D		     1		MakeP:
+ 0000025D  B0 50	     1		mov al, 'P'
+ 0000025F		     1		ToggleAMPMEnd:
+ 0000025F  88 46 03		    mov (TimeObj PTR [esi]).ampm, al
+
+ 00000262			    Complete:
+ 00000262  5E		   *	    pop    esi
+ 00000263  5A		   *	    pop    edx
+ 00000264  5B		   *	    pop    ebx
+ 00000265  58		   *	    pop    eax
+ 00000266  C9		   *	    leave  
+ 00000267  C2 0008		    ret 8
+ 0000026A			AddHours ENDP
+
+
+ 0000026A			PrintTime PROC USES eax ebx esi clockAddress:DWORD
+ 0000026A  55		   *	    push   ebp
+ 0000026B  8B EC	   *	    mov    ebp, esp
+ 0000026D  50		   *	    push   eax
+ 0000026E  53		   *	    push   ebx
+ 0000026F  56		   *	    push   esi
+ 00000270  8B 75 08			mov esi, clockaddress
+
+ 00000273  8A 06			mov al, (TimeObj ptr [esi]).hours
+					BCDPairToCharPair
+ 00000275  8A E0	     1		mov ah, al;		;copy BCD byte to ah, from which to isolate tens
+ 00000277  80 E4 F0	     1		and ah, 11110000b	;isolate tens in upper nibble of ah
+ 0000027A  C0 EC 04	     1		shr ah, 4			;move to (lower nibble of) ah
+ 0000027D  80 C4 30	     1		add ah, 48		;convert ah to char
+ 00000280  24 0F	     1		and al, 00001111b	;isolate ones in al lower nibble
+ 00000282  04 30	     1		add al, '0'		;convert al to char
+					PrintCharPair
+ 00000284  86 C4	     1		xchg al, ah	;swap tens char to al
+ 00000286  E8 00000000 E     1		call WriteChar	;print it
+ 0000028B  86 C4	     1		xchg al, ah	;swap ones char to al
+ 0000028D  E8 00000000 E     1		call WriteChar	;print it
+
+					mWrite ":"
+ 0000002A		     1		.data		
+ 0000002A 3A 00		     1		??0000 BYTE ":",0	
+ 00000292		     1		.code
+ 00000292  52		     1		push	edx
+ 00000293  BA 0000002A R     1		mov	edx,OFFSET ??0000
+ 00000298  E8 00000000 E     1		call	WriteString
+ 0000029D  5A		     1		pop	edx
+
+ 0000029E  0F B6 46 01			movzx eax, (TimeObj ptr [esi]).minutes
+					BCDPairToCharPair
+ 000002A2  8A E0	     1		mov ah, al;		;copy BCD byte to ah, from which to isolate tens
+ 000002A4  80 E4 F0	     1		and ah, 11110000b	;isolate tens in upper nibble of ah
+ 000002A7  C0 EC 04	     1		shr ah, 4			;move to (lower nibble of) ah
+ 000002AA  80 C4 30	     1		add ah, 48		;convert ah to char
+ 000002AD  24 0F	     1		and al, 00001111b	;isolate ones in al lower nibble
+ 000002AF  04 30	     1		add al, '0'		;convert al to char
+					PrintCharPair
+ 000002B1  86 C4	     1		xchg al, ah	;swap tens char to al
+ 000002B3  E8 00000000 E     1		call WriteChar	;print it
+ 000002B8  86 C4	     1		xchg al, ah	;swap ones char to al
+ 000002BA  E8 00000000 E     1		call WriteChar	;print it
+					
+					mWrite ":"
+ 0000002C		     1		.data		
+ 0000002C 3A 00		     1		??0001 BYTE ":",0	
+ 000002BF		     1		.code
+ 000002BF  52		     1		push	edx
+ 000002C0  BA 0000002C R     1		mov	edx,OFFSET ??0001
+ 000002C5  E8 00000000 E     1		call	WriteString
+ 000002CA  5A		     1		pop	edx
+
+ 000002CB  0F B6 46 02			movzx eax, (TimeObj ptr [esi]).seconds
+					BCDPairToCharPair
+ 000002CF  8A E0	     1		mov ah, al;		;copy BCD byte to ah, from which to isolate tens
+ 000002D1  80 E4 F0	     1		and ah, 11110000b	;isolate tens in upper nibble of ah
+ 000002D4  C0 EC 04	     1		shr ah, 4			;move to (lower nibble of) ah
+ 000002D7  80 C4 30	     1		add ah, 48		;convert ah to char
+ 000002DA  24 0F	     1		and al, 00001111b	;isolate ones in al lower nibble
+ 000002DC  04 30	     1		add al, '0'		;convert al to char
+					PrintCharPair
+ 000002DE  86 C4	     1		xchg al, ah	;swap tens char to al
+ 000002E0  E8 00000000 E     1		call WriteChar	;print it
+ 000002E5  86 C4	     1		xchg al, ah	;swap ones char to al
+ 000002E7  E8 00000000 E     1		call WriteChar	;print it
+
+ 000002EC  8A 46 03			mov al, (TimeObj ptr [esi]).ampm
+ 000002EF  E8 00000000 E		call WriteChar
+					mWriteLn "M"
+ 0000002E		     2		.data		
+ 0000002E 4D 00		     2		??0002 BYTE "M",0	
+ 000002F4		     2		.code
+ 000002F4  52		     2		push	edx
+ 000002F5  BA 0000002E R     2		mov	edx,OFFSET ??0002
+ 000002FA  E8 00000000 E     2		call	WriteString
+ 000002FF  5A		     2		pop	edx
+ 00000300  E8 00000000 E     1		call	Crlf
+
+
+ 00000305  5E		   *	    pop    esi
+ 00000306  5B		   *	    pop    ebx
+ 00000307  58		   *	    pop    eax
+ 00000308  C9		   *	    leave  
+ 00000309  C2 0004			ret 4
+ 0000030C			PrintTime ENDP
+
+				end main
+Microsoft (R) Macro Assembler Version 14.13.26128.0	    06/01/18 11:42:20
+Project_4.asm						     Symbols 2 - 1
+
+
+
+
+Macros:
+
+                N a m e                 Type
+
+BCDPairToCharPair  . . . . . . .	Proc
+BCDToDec . . . . . . . . . . . .	Proc
+DecToBCD . . . . . . . . . . . .	Proc
+IsDefined  . . . . . . . . . . .	Func
+PrintCharPair  . . . . . . . . .	Proc
+Startup  . . . . . . . . . . . .	Proc
+ToggleAMPM . . . . . . . . . . .	Proc
+mDumpMem . . . . . . . . . . . .	Proc
+mDump  . . . . . . . . . . . . .	Proc
+mGotoxy  . . . . . . . . . . . .	Proc
+mReadString  . . . . . . . . . .	Proc
+mShowRegister  . . . . . . . . .	Proc
+mShow  . . . . . . . . . . . . .	Proc
+mWriteLn . . . . . . . . . . . .	Proc
+mWriteSpace  . . . . . . . . . .	Proc
+mWriteString . . . . . . . . . .	Proc
+mWrite . . . . . . . . . . . . .	Proc
+
+
+Structures and Unions:
+
+                N a m e                  Size
+                                         Offset      Type
+
+CONSOLE_CURSOR_INFO  . . . . . .	 00000008
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  bVisible . . . . . . . . . . .	 00000004	 DWord
+CONSOLE_SCREEN_BUFFER_INFO . . .	 00000016
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  dwCursorPosition . . . . . . .	 00000004	 DWord
+  wAttributes  . . . . . . . . .	 00000008	 Word
+  srWindow . . . . . . . . . . .	 0000000A	 QWord
+  dwMaximumWindowSize  . . . . .	 00000012	 DWord
+COORD  . . . . . . . . . . . . .	 00000004
+  X  . . . . . . . . . . . . . .	 00000000	 Word
+  Y  . . . . . . . . . . . . . .	 00000002	 Word
+FILETIME . . . . . . . . . . . .	 00000008
+  loDateTime . . . . . . . . . .	 00000000	 DWord
+  hiDateTime . . . . . . . . . .	 00000004	 DWord
+FOCUS_EVENT_RECORD . . . . . . .	 00000004
+  bSetFocus  . . . . . . . . . .	 00000000	 DWord
+FPU_ENVIRON  . . . . . . . . . .	 0000001C
+  controlWord  . . . . . . . . .	 00000000	 Word
+  statusWord . . . . . . . . . .	 00000004	 Word
+  tagWord  . . . . . . . . . . .	 00000008	 Word
+  instrPointerOffset . . . . . .	 0000000C	 DWord
+  instrPointerSelector . . . . .	 00000010	 DWord
+  operandPointerOffset . . . . .	 00000014	 DWord
+  operandPointerSelector . . . .	 00000018	 Word
+INPUT_RECORD . . . . . . . . . .	 00000014
+  EventType  . . . . . . . . . .	 00000000	 Word
+  Event  . . . . . . . . . . . .	 00000004	 XmmWord
+  bKeyDown . . . . . . . . . . .	 00000000	 DWord
+  wRepeatCount . . . . . . . . .	 00000004	 Word
+  wVirtualKeyCode  . . . . . . .	 00000006	 Word
+  wVirtualScanCode . . . . . . .	 00000008	 Word
+  uChar  . . . . . . . . . . . .	 0000000A	 Word
+  UnicodeChar  . . . . . . . . .	 00000000	 Word
+  AsciiChar  . . . . . . . . . .	 00000000	 Byte
+  dwControlKeyState  . . . . . .	 0000000C	 DWord
+  dwMousePosition  . . . . . . .	 00000000	 DWord
+  dwButtonState  . . . . . . . .	 00000004	 DWord
+  dwMouseControlKeyState . . . .	 00000008	 DWord
+  dwEventFlags . . . . . . . . .	 0000000C	 DWord
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  dwCommandId  . . . . . . . . .	 00000000	 DWord
+  bSetFocus  . . . . . . . . . .	 00000000	 DWord
+KEY_EVENT_RECORD . . . . . . . .	 00000010
+  bKeyDown . . . . . . . . . . .	 00000000	 DWord
+  wRepeatCount . . . . . . . . .	 00000004	 Word
+  wVirtualKeyCode  . . . . . . .	 00000006	 Word
+  wVirtualScanCode . . . . . . .	 00000008	 Word
+  uChar  . . . . . . . . . . . .	 0000000A	 Word
+  UnicodeChar  . . . . . . . . .	 00000000	 Word
+  AsciiChar  . . . . . . . . . .	 00000000	 Byte
+  dwControlKeyState  . . . . . .	 0000000C	 DWord
+MENU_EVENT_RECORD  . . . . . . .	 00000004
+  dwCommandId  . . . . . . . . .	 00000000	 DWord
+MOUSE_EVENT_RECORD . . . . . . .	 00000010
+  dwMousePosition  . . . . . . .	 00000000	 DWord
+  dwButtonState  . . . . . . . .	 00000004	 DWord
+  dwMouseControlKeyState . . . .	 00000008	 DWord
+  dwEventFlags . . . . . . . . .	 0000000C	 DWord
+SMALL_RECT . . . . . . . . . . .	 00000008
+  Left . . . . . . . . . . . . .	 00000000	 Word
+  Top  . . . . . . . . . . . . .	 00000002	 Word
+  Right  . . . . . . . . . . . .	 00000004	 Word
+  Bottom . . . . . . . . . . . .	 00000006	 Word
+SYSTEMTIME . . . . . . . . . . .	 00000010
+  wYear  . . . . . . . . . . . .	 00000000	 Word
+  wMonth . . . . . . . . . . . .	 00000002	 Word
+  wDayOfWeek . . . . . . . . . .	 00000004	 Word
+  wDay . . . . . . . . . . . . .	 00000006	 Word
+  wHour  . . . . . . . . . . . .	 00000008	 Word
+  wMinute  . . . . . . . . . . .	 0000000A	 Word
+  wSecond  . . . . . . . . . . .	 0000000C	 Word
+  wMilliseconds  . . . . . . . .	 0000000E	 Word
+TimeObj  . . . . . . . . . . . .	 00000004
+  hours  . . . . . . . . . . . .	 00000000	 Byte
+  minutes  . . . . . . . . . . .	 00000001	 Byte
+  seconds  . . . . . . . . . . .	 00000002	 Byte
+  ampm . . . . . . . . . . . . .	 00000003	 Byte
+WINDOW_BUFFER_SIZE_RECORD  . . .	 00000004
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000030 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 0000030C Para	  Public  'CODE'	
+
+
+Procedures, parameters, and locals:
+
+                N a m e                 Type     Value    Attr
+
+AddHours . . . . . . . . . . . .	P Near	 00000201 _TEXT	Length= 00000069 Public STDCALL
+  clockAddress . . . . . . . . .	DWord	 bp + 00000008
+  hours  . . . . . . . . . . . .	DWord	 bp + 0000000C
+  MakeP  . . . . . . . . . . . .	L Near	 0000025D _TEXT	
+  ToggleAMPMEnd  . . . . . . . .	L Near	 0000025F _TEXT	
+  Complete . . . . . . . . . . .	L Near	 00000262 _TEXT	
+AddMins  . . . . . . . . . . . .	P Near	 000001A9 _TEXT	Length= 00000058 Public STDCALL
+  clockAddress . . . . . . . . .	DWord	 bp + 00000008
+  minutes  . . . . . . . . . . .	DWord	 bp + 0000000C
+  Complete . . . . . . . . . . .	L Near	 000001F9 _TEXT	
+AddSecs  . . . . . . . . . . . .	P Near	 00000151 _TEXT	Length= 00000058 Public STDCALL
+  clockAddress . . . . . . . . .	DWord	 bp + 00000008
+  seconds  . . . . . . . . . . .	DWord	 bp + 0000000C
+  Complete . . . . . . . . . . .	L Near	 000001A1 _TEXT	
+CloseFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Clrscr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleScreenBufferInfo . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetDateTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetFileTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetKeyState  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetLastError . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetMaxXY . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetMseconds  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetNumberOfConsoleInputEvents  .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetProcessHeap . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetSystemTime  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetTickCount . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Gotoxy . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapAlloc  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapCreate . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapDestroy  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapFree . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapSize . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+LocalFree  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+MessageBoxA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+MsgBoxAsk  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+MsgBox . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+OpenInputFile  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ParseDecimal32 . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ParseInteger32 . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+PeekConsoleInputA  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+PrintTime  . . . . . . . . . . .	P Near	 0000026A _TEXT	Length= 000000A2 Public STDCALL
+  clockAddress . . . . . . . . .	DWord	 bp + 00000008
+Random32 . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+RandomRange  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Randomize  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadChar . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadConsoleA . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadConsoleInputA  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadDec  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadFile . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadFloat  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadFromFile . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadHex  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadInt  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadKeyFlush . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadKey  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadString . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleCursorPosition . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleScreenBufferSize . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleTextAttribute  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleTitleA . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleWindowInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetFilePointer . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetTime  . . . . . . . . . . . .	P Near	 000000A4 _TEXT	Length= 0000004E Public STDCALL
+  clockAddress . . . . . . . . .	DWord	 bp + 00000008
+  seconds  . . . . . . . . . . .	Byte	 bp + 0000000C
+  minutes  . . . . . . . . . . .	Byte	 bp + 00000010
+  hours  . . . . . . . . . . . .	Byte	 bp + 00000014
+  ampm . . . . . . . . . . . . .	Byte	 bp + 00000018
+ShowFPUStack . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Sleep  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+StrLength  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_compare  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+UpdateTimeObjFromSysClock  . . .	P Near	 000000F2 _TEXT	Length= 0000005F Public STDCALL
+  clockAddress . . . . . . . . .	DWord	 bp + 00000008
+  IsPM . . . . . . . . . . . . .	L Near	 00000121 _TEXT	
+  ProcessHour  . . . . . . . . .	L Near	 00000123 _TEXT	
+WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteBinB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteBin . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteChar  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleA  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleOutputAttribute  . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleOutputCharacterA . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteDec . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteFloat . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteHexB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteHex . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteInt . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteStackFrameName  . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteStackFrame  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteToFile  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteWindowsMsg  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+main . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 000000A4 Public STDCALL
+  L1 . . . . . . . . . . . . . .	L Near	 00000000 _TEXT	
+printf . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
+scanf  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
+wsprintfA  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+??0000 . . . . . . . . . . . . .	Byte	 0000002A _DATA	
+??0001 . . . . . . . . . . . . .	Byte	 0000002C _DATA	
+??0002 . . . . . . . . . . . . .	Byte	 0000002E _DATA	
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000003h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+ALT_MASK . . . . . . . . . . . .	Number	 00000003h   
+CAPSLOCK_ON  . . . . . . . . . .	Number	 00000080h   
+CREATE_ALWAYS  . . . . . . . . .	Number	 00000002h   
+CREATE_NEW . . . . . . . . . . .	Number	 00000001h   
+CTRL_MASK  . . . . . . . . . . .	Number	 0000000Ch   
+CreateFile . . . . . . . . . . .	Text   	 CreateFileA
+DO_NOT_SHARE . . . . . . . . . .	Number	 00000000h   
+ENABLE_ECHO_INPUT  . . . . . . .	Number	 00000004h   
+ENABLE_LINE_INPUT  . . . . . . .	Number	 00000002h   
+ENABLE_MOUSE_INPUT . . . . . . .	Number	 00000010h   
+ENABLE_PROCESSED_INPUT . . . . .	Number	 00000001h   
+ENABLE_PROCESSED_OUTPUT  . . . .	Number	 00000001h   
+ENABLE_WINDOW_INPUT  . . . . . .	Number	 00000008h   
+ENABLE_WRAP_AT_EOL_OUTPUT  . . .	Number	 00000002h   
+ENHANCED_KEY . . . . . . . . . .	Number	 00000100h   
+FALSE  . . . . . . . . . . . . .	Number	 00000000h   
+FILE_APPEND_DATA . . . . . . . .	Number	 00000004h   
+FILE_ATTRIBUTE_ARCHIVE . . . . .	Number	 00000020h   
+FILE_ATTRIBUTE_COMPRESSED  . . .	Number	 00000800h   
+FILE_ATTRIBUTE_DEVICE  . . . . .	Number	 00000040h   
+FILE_ATTRIBUTE_DIRECTORY . . . .	Number	 00000010h   
+FILE_ATTRIBUTE_ENCRYPTED . . . .	Number	 00004000h   
+FILE_ATTRIBUTE_HIDDEN  . . . . .	Number	 00000002h   
+FILE_ATTRIBUTE_NORMAL  . . . . .	Number	 00000080h   
+FILE_ATTRIBUTE_NOT_CONTENT_INDEXED .	Number	 00002000h   
+FILE_ATTRIBUTE_OFFLINE . . . . .	Number	 00001000h   
+FILE_ATTRIBUTE_READONLY  . . . .	Number	 00000001h   
+FILE_ATTRIBUTE_REPARSE_POINT . .	Number	 00000400h   
+FILE_ATTRIBUTE_SPARSE_FILE . . .	Number	 00000200h   
+FILE_ATTRIBUTE_SYSTEM  . . . . .	Number	 00000004h   
+FILE_ATTRIBUTE_TEMPORARY . . . .	Number	 00000100h   
+FILE_BEGIN . . . . . . . . . . .	Number	 00000000h   
+FILE_CURRENT . . . . . . . . . .	Number	 00000001h   
+FILE_DELETE_CHILD  . . . . . . .	Number	 00000040h   
+FILE_END . . . . . . . . . . . .	Number	 00000002h   
+FILE_READ_DATA . . . . . . . . .	Number	 00000001h   
+FILE_SHARE_DELETE  . . . . . . .	Number	 00000004h   
+FILE_SHARE_READ  . . . . . . . .	Number	 00000001h   
+FILE_SHARE_WRITE . . . . . . . .	Number	 00000002h   
+FILE_WRITE_DATA  . . . . . . . .	Number	 00000002h   
+FOCUS_EVENT  . . . . . . . . . .	Number	 00000010h   
+FORMAT_MESSAGE_ALLOCATE_BUFFER .	Number	 00000100h   
+FORMAT_MESSAGE_FROM_SYSTEM . . .	Number	 00001000h   
+FormatMessage  . . . . . . . . .	Text   	 FormatMessageA
+GENERIC_ALL  . . . . . . . . . .	Number	 10000000h   
+GENERIC_EXECUTE  . . . . . . . .	Number	 20000000h   
+GENERIC_READ . . . . . . . . . .	Number	 -80000000h   
+GENERIC_WRITE  . . . . . . . . .	Number	 40000000h   
+GetCommandLine . . . . . . . . .	Text   	 GetCommandLineA
+HANDLE . . . . . . . . . . . . .	Text   	 DWORD
+HEAP_GENERATE_EXCEPTIONS . . . .	Number	 00000004h   
+HEAP_GROWABLE  . . . . . . . . .	Number	 00000002h   
+HEAP_NO_SERIALIZE  . . . . . . .	Number	 00000001h   
+HEAP_REALLOC_IN_PLACE_ONLY . . .	Number	 00000010h   
+HEAP_ZERO_MEMORY . . . . . . . .	Number	 00000008h   
+IDABORT  . . . . . . . . . . . .	Number	 00000003h   
+IDCANCEL . . . . . . . . . . . .	Number	 00000002h   
+IDCLOSE  . . . . . . . . . . . .	Number	 00000008h   
+IDCONTINUE . . . . . . . . . . .	Number	 0000000Bh   
+IDHELP . . . . . . . . . . . . .	Number	 00000009h   
+IDIGNORE . . . . . . . . . . . .	Number	 00000005h   
+IDNO . . . . . . . . . . . . . .	Number	 00000007h   
+IDOK . . . . . . . . . . . . . .	Number	 00000001h   
+IDRETRY  . . . . . . . . . . . .	Number	 00000004h   
+IDTIMEOUT  . . . . . . . . . . .	Number	 00007D00h   
+IDTRYAGAIN . . . . . . . . . . .	Number	 0000000Ah   
+IDYES  . . . . . . . . . . . . .	Number	 00000006h   
+INVALID_HANDLE_VALUE . . . . . .	Number	 -00000001h   
+KBDOWN_FLAG  . . . . . . . . . .	Number	 00000001h   
+KEY_EVENT  . . . . . . . . . . .	Number	 00000001h   
+KEY_MASKS  . . . . . . . . . . .	Number	 0000001Fh   
+LEFT_ALT_PRESSED . . . . . . . .	Number	 00000002h   
+LEFT_CTRL_PRESSED  . . . . . . .	Number	 00000008h   
+MB_ABORTRETRYIGNORE  . . . . . .	Number	 00000002h   
+MB_APPLMODAL . . . . . . . . . .	Number	 00000000h   
+MB_CANCELTRYCONTINUE . . . . . .	Number	 00000006h   
+MB_DEFBUTTON1  . . . . . . . . .	Number	 00000000h   
+MB_DEFBUTTON2  . . . . . . . . .	Number	 00000100h   
+MB_DEFBUTTON3  . . . . . . . . .	Number	 00000200h   
+MB_DEFBUTTON4  . . . . . . . . .	Number	 00000300h   
+MB_HELP  . . . . . . . . . . . .	Number	 00004000h   
+MB_ICONASTERISK  . . . . . . . .	Number	 00000040h   
+MB_ICONERROR . . . . . . . . . .	Number	 00000010h   
+MB_ICONEXCLAMATION . . . . . . .	Number	 00000030h   
+MB_ICONHAND  . . . . . . . . . .	Number	 00000010h   
+MB_ICONINFORMATION . . . . . . .	Number	 00000040h   
+MB_ICONQUESTION  . . . . . . . .	Number	 00000020h   
+MB_ICONSTOP  . . . . . . . . . .	Number	 00000010h   
+MB_ICONWARNING . . . . . . . . .	Number	 00000030h   
+MB_OKCANCEL  . . . . . . . . . .	Number	 00000001h   
+MB_OK  . . . . . . . . . . . . .	Number	 00000000h   
+MB_RETRYCANCEL . . . . . . . . .	Number	 00000005h   
+MB_SYSTEMMODAL . . . . . . . . .	Number	 00001000h   
+MB_TASKMODAL . . . . . . . . . .	Number	 00002000h   
+MB_USERICON  . . . . . . . . . .	Number	 00000080h   
+MB_YESNOCANCEL . . . . . . . . .	Number	 00000003h   
+MB_YESNO . . . . . . . . . . . .	Number	 00000004h   
+MENU_EVENT . . . . . . . . . . .	Number	 00000008h   
+MOUSE_EVENT  . . . . . . . . . .	Number	 00000002h   
+MessageBox . . . . . . . . . . .	Text   	 MessageBoxA
+NULL . . . . . . . . . . . . . .	Number	 00000000h   
+NUMLOCK_ON . . . . . . . . . . .	Number	 00000020h   
+OPEN_ALWAYS  . . . . . . . . . .	Number	 00000004h   
+OPEN_EXISTING  . . . . . . . . .	Number	 00000003h   
+PeekConsoleInput . . . . . . . .	Text   	 PeekConsoleInputA
+RIGHT_ALT_PRESSED  . . . . . . .	Number	 00000001h   
+RIGHT_CTRL_PRESSED . . . . . . .	Number	 00000004h   
+ReadConsoleInput . . . . . . . .	Text   	 ReadConsoleInputA
+ReadConsole  . . . . . . . . . .	Text   	 ReadConsoleA
+SCROLLLOCK_ON  . . . . . . . . .	Number	 00000040h   
+SHIFT_MASK . . . . . . . . . . .	Number	 00000010h   
+SHIFT_PRESSED  . . . . . . . . .	Number	 00000010h   
+STD_ERROR_HANDLE . . . . . . . .	Number	 -0000000Ch   
+STD_INPUT_HANDLE . . . . . . . .	Number	 -0000000Ah   
+STD_OUTPUT_HANDLE  . . . . . . .	Number	 -0000000Bh   
+SetConsoleTitle  . . . . . . . .	Text   	 SetConsoleTitleA
+TAB  . . . . . . . . . . . . . .	Number	 00000009h   
+TRUE . . . . . . . . . . . . . .	Number	 00000001h   
+TRUNCATE_EXISTING  . . . . . . .	Number	 00000005h   
+VK_11  . . . . . . . . . . . . .	Number	 000000BDh   
+VK_12  . . . . . . . . . . . . .	Number	 000000BBh   
+VK_ADD . . . . . . . . . . . . .	Number	 0000006Bh   
+VK_BACK  . . . . . . . . . . . .	Number	 00000008h   
+VK_CANCEL  . . . . . . . . . . .	Number	 00000003h   
+VK_CAPITAL . . . . . . . . . . .	Number	 00000014h   
+VK_CLEAR . . . . . . . . . . . .	Number	 0000000Ch   
+VK_CONTROL . . . . . . . . . . .	Number	 00000011h   
+VK_DECIMAL . . . . . . . . . . .	Number	 0000006Eh   
+VK_DELETE  . . . . . . . . . . .	Number	 0000002Eh   
+VK_DIVIDE  . . . . . . . . . . .	Number	 0000006Fh   
+VK_DOWN  . . . . . . . . . . . .	Number	 00000028h   
+VK_END . . . . . . . . . . . . .	Number	 00000023h   
+VK_ESCAPE  . . . . . . . . . . .	Number	 0000001Bh   
+VK_EXECUTE . . . . . . . . . . .	Number	 0000002Bh   
+VK_F10 . . . . . . . . . . . . .	Number	 00000079h   
+VK_F11 . . . . . . . . . . . . .	Number	 0000007Ah   
+VK_F12 . . . . . . . . . . . . .	Number	 0000007Bh   
+VK_F13 . . . . . . . . . . . . .	Number	 0000007Ch   
+VK_F14 . . . . . . . . . . . . .	Number	 0000007Dh   
+VK_F15 . . . . . . . . . . . . .	Number	 0000007Eh   
+VK_F16 . . . . . . . . . . . . .	Number	 0000007Fh   
+VK_F17 . . . . . . . . . . . . .	Number	 00000080h   
+VK_F18 . . . . . . . . . . . . .	Number	 00000081h   
+VK_F19 . . . . . . . . . . . . .	Number	 00000082h   
+VK_F1  . . . . . . . . . . . . .	Number	 00000070h   
+VK_F20 . . . . . . . . . . . . .	Number	 00000083h   
+VK_F21 . . . . . . . . . . . . .	Number	 00000084h   
+VK_F22 . . . . . . . . . . . . .	Number	 00000085h   
+VK_F23 . . . . . . . . . . . . .	Number	 00000086h   
+VK_F24 . . . . . . . . . . . . .	Number	 00000087h   
+VK_F2  . . . . . . . . . . . . .	Number	 00000071h   
+VK_F3  . . . . . . . . . . . . .	Number	 00000072h   
+VK_F4  . . . . . . . . . . . . .	Number	 00000073h   
+VK_F5  . . . . . . . . . . . . .	Number	 00000074h   
+VK_F6  . . . . . . . . . . . . .	Number	 00000075h   
+VK_F7  . . . . . . . . . . . . .	Number	 00000076h   
+VK_F8  . . . . . . . . . . . . .	Number	 00000077h   
+VK_F9  . . . . . . . . . . . . .	Number	 00000078h   
+VK_HELP  . . . . . . . . . . . .	Number	 0000002Fh   
+VK_HOME  . . . . . . . . . . . .	Number	 00000024h   
+VK_INSERT  . . . . . . . . . . .	Number	 0000002Dh   
+VK_LBUTTON . . . . . . . . . . .	Number	 00000001h   
+VK_LCONTROL  . . . . . . . . . .	Number	 000000A2h   
+VK_LEFT  . . . . . . . . . . . .	Number	 00000025h   
+VK_LMENU . . . . . . . . . . . .	Number	 000000A4h   
+VK_LSHIFT  . . . . . . . . . . .	Number	 000000A0h   
+VK_MENU  . . . . . . . . . . . .	Number	 00000012h   
+VK_MULTIPLY  . . . . . . . . . .	Number	 0000006Ah   
+VK_NEXT  . . . . . . . . . . . .	Number	 00000022h   
+VK_NUMLOCK . . . . . . . . . . .	Number	 00000090h   
+VK_NUMPAD0 . . . . . . . . . . .	Number	 00000060h   
+VK_NUMPAD1 . . . . . . . . . . .	Number	 00000061h   
+VK_NUMPAD2 . . . . . . . . . . .	Number	 00000062h   
+VK_NUMPAD3 . . . . . . . . . . .	Number	 00000063h   
+VK_NUMPAD4 . . . . . . . . . . .	Number	 00000064h   
+VK_NUMPAD5 . . . . . . . . . . .	Number	 00000065h   
+VK_NUMPAD6 . . . . . . . . . . .	Number	 00000066h   
+VK_NUMPAD7 . . . . . . . . . . .	Number	 00000067h   
+VK_NUMPAD8 . . . . . . . . . . .	Number	 00000068h   
+VK_NUMPAD9 . . . . . . . . . . .	Number	 00000069h   
+VK_PAUSE . . . . . . . . . . . .	Number	 00000013h   
+VK_PRINT . . . . . . . . . . . .	Number	 0000002Ah   
+VK_PRIOR . . . . . . . . . . . .	Number	 00000021h   
+VK_RBUTTON . . . . . . . . . . .	Number	 00000002h   
+VK_RCONTROL  . . . . . . . . . .	Number	 000000A3h   
+VK_RETURN  . . . . . . . . . . .	Number	 0000000Dh   
+VK_RIGHT . . . . . . . . . . . .	Number	 00000027h   
+VK_RMENU . . . . . . . . . . . .	Number	 000000A5h   
+VK_RSHIFT  . . . . . . . . . . .	Number	 000000A1h   
+VK_SCROLL  . . . . . . . . . . .	Number	 00000091h   
+VK_SEPARATER . . . . . . . . . .	Number	 0000006Ch   
+VK_SHIFT . . . . . . . . . . . .	Number	 00000010h   
+VK_SNAPSHOT  . . . . . . . . . .	Number	 0000002Ch   
+VK_SPACE . . . . . . . . . . . .	Number	 00000020h   
+VK_SUBTRACT  . . . . . . . . . .	Number	 0000006Dh   
+VK_TAB . . . . . . . . . . . . .	Number	 00000009h   
+VK_UP  . . . . . . . . . . . . .	Number	 00000026h   
+WINDOW_BUFFER_SIZE_EVENT . . . .	Number	 00000004h   
+WriteConsoleOutputCharacter  . .	Text   	 WriteConsoleOutputCharacterA
+WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
+author . . . . . . . . . . . . .	Byte	 00000000 _DATA	
+black  . . . . . . . . . . . . .	Number	 00000000h   
+blue . . . . . . . . . . . . . .	Number	 00000001h   
+brown  . . . . . . . . . . . . .	Number	 00000006h   
+clock  . . . . . . . . . . . . .	TimeObj	 00000026 _DATA	
+cyan . . . . . . . . . . . . . .	Number	 00000003h   
+exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
+gray . . . . . . . . . . . . . .	Number	 00000008h   
+green  . . . . . . . . . . . . .	Number	 00000002h   
+lightBlue  . . . . . . . . . . .	Number	 00000009h   
+lightCyan  . . . . . . . . . . .	Number	 0000000Bh   
+lightGray  . . . . . . . . . . .	Number	 00000007h   
+lightGreen . . . . . . . . . . .	Number	 0000000Ah   
+lightMagenta . . . . . . . . . .	Number	 0000000Dh   
+lightRed . . . . . . . . . . . .	Number	 0000000Ch   
+magenta  . . . . . . . . . . . .	Number	 00000005h   
+red  . . . . . . . . . . . . . .	Number	 00000004h   
+white  . . . . . . . . . . . . .	Number	 0000000Fh   
+wsprintf . . . . . . . . . . . .	Text   	 wsprintfA
+yellow . . . . . . . . . . . . .	Number	 0000000Eh   
+
+	   1 Warnings
+	   0 Errors
